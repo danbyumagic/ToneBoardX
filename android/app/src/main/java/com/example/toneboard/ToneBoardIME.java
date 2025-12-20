@@ -7,6 +7,7 @@ import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.widget.TextView;
+import android.view.KeyEvent;
 
 public class ToneBoardIME extends InputMethodService implements KeyboardView.OnKeyboardActionListener {
 
@@ -40,37 +41,48 @@ public class ToneBoardIME extends InputMethodService implements KeyboardView.OnK
 
     @Override
     public void onKey(int primaryCode, int[] keyCodes) {
-        if (inputConnection == null) return;
+        InputConnection ic = getCurrentInputConnection();
+        if (ic == null) return;
+
         switch (primaryCode) {
             case Keyboard.KEYCODE_DELETE:
-                if (!currentPinyin.isEmpty()) {
-                    currentPinyin = currentPinyin.substring(0, currentPinyin.length() - 1);
-                    updateCandidates();
-                }
+                // Standard backspace behavior
+                ic.deleteSurroundingText(1, 0);
+                currentPinyin = ""; // Reset internal state on delete for now
                 break;
+
             case Keyboard.KEYCODE_DONE:
-                commitCurrentPinyin();
+            case 10: // Enter key
+                ic.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER));
+                ic.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER));
                 break;
-            case 49: // Tone 1 (example keycode)
-                appendTone(1);
+
+            case 49: // Tone 1
+            case 50: // Tone 2
+            case 51: // Tone 3
+            case 52: // Tone 4
+                // For now, let's just output the number so you see "something" happens
+                // Later you can hook this back to your dictionary logic
+                char code = (char) primaryCode;
+                ic.commitText(String.valueOf(code), 1);
                 break;
-            // Add cases for tones 2,3,4
-            case 50:
-                appendTone(2);
-                break;
-            case 51:
-                appendTone(3);
-                break;
-            case 52:
-                appendTone(4);
-                break;
+
             default:
-                if (primaryCode >= 97 && primaryCode <= 122) { // Letters
-                    currentPinyin += (char) primaryCode;
-                    updateCandidates();
-                }
+                // Handle standard letters
+                char letter = (char) primaryCode;
+
+                // OPTION A: Direct Typing (English style) - USE THIS TO TEST FIRST
+                ic.commitText(String.valueOf(letter), 1);
+
+            /*
+            // OPTION B: Buffered Typing (Pinyin style) - Use this later
+            currentPinyin += code;
+            ic.setComposingText(currentPinyin, 1); // This shows the underlined text
+            updateCandidates();
+            */
         }
     }
+
 
     private void appendTone(int tone) {
         if (!currentPinyin.isEmpty()) {
